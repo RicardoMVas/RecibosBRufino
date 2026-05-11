@@ -323,7 +323,10 @@
       </div>
       <div class="form-group">
         <label class="lbl">Contraseña</label>
-        <input type="password" id="login-password" placeholder="••••••••" />
+        <div style="position:relative;">
+          <input type="password" id="login-password" placeholder="••••••••" style="padding-right:42px;" />
+          <button type="button" onclick="togglePass('login-password',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--verde);opacity:.6;font-size:16px;">👁</button>
+        </div>
       </div>
       <button class="btn btn-primary btn-full" onclick="doLogin()">Ingresar</button>
       <p style="text-align:center;font-size:13px;margin-top:16px;color:var(--verde);opacity:.7;">
@@ -377,11 +380,17 @@
       <div class="form-grid-2">
         <div class="form-group">
           <label class="lbl">Contraseña</label>
-          <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres" />
+          <div style="position:relative;">
+            <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres" style="padding-right:42px;" />
+            <button type="button" onclick="togglePass('reg-password',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--verde);opacity:.6;font-size:16px;">👁</button>
+          </div>
         </div>
         <div class="form-group">
           <label class="lbl">Confirmar contraseña</label>
-          <input type="password" id="reg-confirm" placeholder="Repetir contraseña" />
+          <div style="position:relative;">
+            <input type="password" id="reg-confirm" placeholder="Repetir contraseña" style="padding-right:42px;" />
+            <button type="button" onclick="togglePass('reg-confirm',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--verde);opacity:.6;font-size:16px;">👁</button>
+          </div>
         </div>
       </div>
       <button class="btn btn-primary btn-full" onclick="doRegister()">Crear Cuenta</button>
@@ -718,6 +727,11 @@ let reciboParaImprimir = null
 
 // ── HELPERS ────────────────────────────────────────────────
 function $(id)  { return document.getElementById(id) }
+function togglePass(id, btn) {
+  const input = $(id)
+  if (input.type === 'password') { input.type = 'text'; btn.style.opacity = '1' }
+  else { input.type = 'password'; btn.style.opacity = '.6' }
+}
 function fmt(n) {
   return new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS', minimumFractionDigits:2 }).format(n || 0)
 }
