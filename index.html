@@ -642,6 +642,10 @@
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:14px;">
         <div class="form-group">
+          <label class="lbl">Total</label>
+          <input type="number" id="form-total" step="0.01" min="0" placeholder="0.00" oninput="calcularD()" />
+        </div>
+        <div class="form-group">
           <label class="lbl">A — Recibo Sueldo</label>
           <input type="number" id="form-a" step="0.01" min="0" placeholder="0.00" oninput="calcularD()" />
         </div>
@@ -652,10 +656,6 @@
         <div class="form-group">
           <label class="lbl">C — Adelantos</label>
           <input type="number" id="form-c" step="0.01" min="0" placeholder="0.00" oninput="calcularD()" />
-        </div>
-        <div class="form-group">
-          <label class="lbl">Total</label>
-          <input type="number" id="form-total" step="0.01" min="0" placeholder="0.00" oninput="calcularD()" />
         </div>
       </div>
       <!-- D calculado -->
