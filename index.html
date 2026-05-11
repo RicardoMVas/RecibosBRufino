@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supermercados Rufino — Recibos de Haberes</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ── RESET & VARIABLES ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --verde:       #154135;
+      --verde-dark:  #0f2f26;
+      --verde-light: #1e5e55;
+      --beige:       #d5c8b6;
+      --beige-light: #f2ede6;
+      --beige-mid:   #e8dfd3;
+      --white:       #ffffff;
+      --red:         #b91c1c;
+      --red-light:   #fef2f2;
+      --green:       #15803d;
+      --green-light: #f0fdf4;
+      --yellow:      #92400e;
+      --yellow-light:#fffbeb;
+      --shadow:      0 2px 12px rgba(21,65,53,.10);
+    }
+    html, body { height: 100%; font-family: 'Trebuchet MS', Helvetica, sans-serif; background: var(--beige-light); color: var(--verde); }
+
+    /* ── UTILITY ── */
+    .hidden { display: none !important; }
+    .text-center { text-align: center; }
+    .text-right  { text-align: right;  }
+    .font-bold   { font-weight: 700; }
+    .mt-1 { margin-top: 4px; }
+    .mt-2 { margin-top: 8px; }
+    .mt-4 { margin-top: 16px; }
+    .mb-4 { margin-bottom: 16px; }
+    .gap-2 { gap: 8px; }
+    .flex { display: flex; }
+    .flex-wrap { flex-wrap: wrap; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .w-full { width: 100%; }
+
+    /* ── LOADER ── */
+    #app-loader {
+      position: fixed; inset: 0; background: var(--verde);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 9999; transition: opacity .4s;
+    }
+    #app-loader .logo-big {
+      width: 72px; height: 72px; background: var(--beige);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px; font-weight: 900; color: var(--verde); font-family: Georgia, serif;
+      margin-bottom: 16px;
+    }
+    #app-loader p { color: var(--beige); font-size: 13px; letter-spacing: 3px; text-transform: uppercase; }
+
+    /* ── NAVBAR ── */
+    nav {
+      background: var(--verde); padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    }
+    .nav-brand { display: flex; align-items: center; gap: 12px; }
+    .nav-logo {
+      width: 36px; height: 36px; background: var(--beige);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 18px; color: var(--verde); font-family: Georgia, serif;
+    }
+    .nav-brand-text { line-height: 1.2; }
+    .nav-brand-text strong { color: var(--beige); font-size: 14px; font-family: Georgia, serif; display: block; }
+    .nav-brand-text span  { color: var(--beige); opacity: .6; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+    .nav-links { display: flex; align-items: center; gap: 6px; }
+    .nav-btn {
+      background: transparent; border: 1px solid rgba(213,200,182,.3);
+      color: var(--beige); padding: 6px 14px; font-size: 13px; cursor: pointer;
+      transition: all .2s; font-family: inherit;
+    }
+    .nav-btn:hover { background: rgba(213,200,182,.15); border-color: var(--beige); }
+    .nav-btn.active { background: var(--beige); color: var(--verde); font-weight: 700; }
+    .nav-user { color: var(--beige); opacity: .7; font-size: 12px; margin-right: 8px; }
+
+    /* ── PÁGINAS ── */
+    .page { display: none; max-width: 960px; margin: 0 auto; padding: 32px 20px; }
+    .page.active { display: block; }
+
+    /* ── AUTH ── */
+    .auth-wrap {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .auth-header { text-align: center; margin-bottom: 32px; }
+    .auth-logo {
+      width: 64px; height: 64px; background: var(--verde);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; font-weight: 900; color: var(--beige);
+      font-family: Georgia, serif; margin: 0 auto 12px;
+    }
+    .auth-header h1 { font-family: Georgia, serif; font-size: 26px; color: var(--verde); }
+    .auth-header p  { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--verde); opacity: .6; margin-top: 4px; }
+    .auth-divider   { width: 48px; height: 2px; background: var(--beige); margin: 10px auto; }
+    .auth-sub { font-size: 13px; color: var(--verde); opacity: .7; }
+
+    .card {
+      background: var(--white); border: 1px solid var(--beige);
+      box-shadow: var(--shadow); padding: 28px;
+    }
+    .card-sm { max-width: 420px; width: 100%; }
+    .card-md { max-width: 560px; width: 100%; }
+
+    /* ── FORMS ── */
+    .form-group { margin-bottom: 16px; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label.lbl {
+      display: block; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--verde-light); margin-bottom: 5px;
+    }
+    input[type=text], input[type=email], input[type=password],
+    input[type=number], select, textarea {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--beige);
+      background: var(--beige-light); color: var(--verde); font-size: 14px;
+      font-family: inherit; outline: none; transition: border .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--verde); background: var(--white);
+    }
+    input::placeholder { color: var(--beige); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-block; padding: 11px 24px; font-size: 13px;
+      font-weight: 700; font-family: inherit; cursor: pointer;
+      transition: all .2s; border: none; text-align: center;
+      letter-spacing: .5px;
+    }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary   { background: var(--verde); color: var(--beige); border: 2px solid var(--verde); }
+    .btn-primary:hover:not(:disabled)   { background: var(--verde-dark); }
+    .btn-secondary { background: transparent; color: var(--verde); border: 2px solid var(--verde); }
+    .btn-secondary:hover:not(:disabled) { background: var(--verde); color: var(--beige); }
+    .btn-danger    { background: var(--red); color: white; border: 2px solid var(--red); }
+    .btn-danger:hover:not(:disabled)    { background: #991b1b; }
+    .btn-success   { background: var(--green); color: white; border: 2px solid var(--green); }
+    .btn-success:hover:not(:disabled)   { background: #166534; }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-full { width: 100%; display: block; }
+
+    /* ── ALERTS ── */
+    .alert { padding: 12px 16px; font-size: 13px; border: 1px solid; margin-bottom: 16px; }
+    .alert-error   { background: var(--red-light);    color: var(--red);    border-color: #fca5a5; }
+    .alert-success { background: var(--green-light);  color: var(--green);  border-color: #86efac; }
+    .alert-warning { background: var(--yellow-light); color: var(--yellow); border-color: #fcd34d; }
+
+    /* ── BADGE ── */
+    .badge {
+      display: inline-block; padding: 2px 10px; font-size: 11px;
+      font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border: 1px solid;
+    }
+    .badge-pending  { background: var(--yellow-light); color: var(--yellow); border-color: #fcd34d; }
+    .badge-approved { background: var(--green-light);  color: var(--green);  border-color: #86efac; }
+    .badge-rejected { background: var(--red-light);    color: var(--red);    border-color: #fca5a5; }
+
+    /* ── STATS ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--white); border: 1px solid var(--beige);
+      padding: 20px 24px; text-align: center; box-shadow: var(--shadow);
+    }
+    .stat-card .num { font-family: Georgia, serif; font-size: 40px; font-weight: 900; color: var(--verde); line-height: 1; }
+    .stat-card .lbl-stat { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--verde); opacity: .6; margin-top: 6px; }
+    .stat-card.warn .num { color: #b45309; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { background: var(--verde); color: var(--beige); }
+    thead th { padding: 11px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; white-space: nowrap; }
+    thead th.text-right { text-align: right; }
+    tbody tr { border-bottom: 1px solid var(--beige-mid); transition: background .15s; }
+    tbody tr:nth-child(even) { background: var(--beige-light); }
+    tbody tr:hover { background: var(--beige-mid); }
+    tbody td { padding: 10px 14px; color: var(--verde); vertical-align: middle; }
+    tbody td.text-right { text-align: right; }
+    tbody td.td-bold { font-weight: 700; }
+    .td-actions { text-align: right; white-space: nowrap; }
+    .td-actions .btn + .btn { margin-left: 6px; }
+
+    /* ── SECTION HEADERS ── */
+    .section-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+    .section-header h2 { font-family: Georgia, serif; font-size: 22px; color: var(--verde); }
+    .section-header p  { font-size: 12px; color: var(--verde); opacity: .6; margin-top: 2px; }
+
+    /* ── FILTER BAR ── */
+    .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-end; }
+    .filter-bar select, .filter-bar input { width: auto; padding: 8px 12px; font-size: 13px; }
+
+    /* ── RECIBO CARD (empleado view) ── */
+    .recibo-card {
+      background: var(--white); border: 1px solid var(--beige);
+      box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden;
+    }
+    .recibo-card-header {
+      background: var(--beige-mid); padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    }
+    .recibo-card-header .periodo { font-family: Georgia, serif; font-size: 18px; font-weight: 700; color: var(--verde); }
+    .recibo-card-header .tipo    { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--verde); opacity: .6; }
+    .recibo-card-body { padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; }
+    .recibo-item { text-align: center; }
+    .recibo-item .ri-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--verde); opacity: .6; }
+    .recibo-item .ri-val { font-size: 15px; font-weight: 700; color: var(--verde); margin-top: 2px; }
+    .recibo-total-box { background: var(--verde); padding: 10px 18px; text-align: center; }
+    .recibo-total-box .rt-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--beige); opacity: .7; }
+    .recibo-total-box .rt-val { font-family: Georgia, serif; font-size: 20px; font-weight: 900; color: var(--beige); }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      z-index: 500; display: flex; align-items: center; justify-content: center;
+      padding: 16px; overflow-y: auto;
+    }
+    .modal-box { background: var(--white); width: 100%; max-width: 680px; box-shadow: 0 20px 60px rgba(0,0,0,.3); max-height: 92vh; overflow-y: auto; }
+    .modal-head {
+      background: var(--verde); color: var(--beige); padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0;
+    }
+    .modal-head h3 { font-family: Georgia, serif; font-size: 18px; }
+    .modal-close { background: none; border: none; color: var(--beige); font-size: 22px; cursor: pointer; opacity: .7; transition: opacity .2s; }
+    .modal-close:hover { opacity: 1; }
+    .modal-body { padding: 24px; }
+    .modal-actions { padding: 16px 24px; border-top: 1px solid var(--beige-mid); display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* ── RECIBO IMPRIMIBLE ── */
+    .recibo-print { border: 2px solid var(--verde); font-family: 'Trebuchet MS', Helvetica, sans-serif; }
+    .rp-header { background: var(--verde); color: var(--beige); padding: 20px 28px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .rp-empresa-name { font-family: Georgia, serif; font-size: 18px; font-weight: 900; }
+    .rp-empresa-sub  { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; opacity: .65; margin-top: 4px; }
+    .rp-tipo { text-align: right; }
+    .rp-tipo-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; opacity: .65; }
+    .rp-tipo-val { font-family: Georgia, serif; font-size: 36px; font-weight: 900; line-height: 1; }
+    .rp-periodo { background: var(--beige-mid); padding: 8px 28px; font-size: 11px; text-transform: uppercase; letter-spacing: 2.5px; font-weight: 700; color: var(--verde-dark); }
+    .rp-body { padding: 24px 28px; }
+    .rp-empleado { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding-bottom: 18px; border-bottom: 1px solid var(--beige); margin-bottom: 20px; }
+    .rp-field-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--verde-light); font-weight: 700; }
+    .rp-field-val { font-size: 15px; font-weight: 700; color: var(--verde); margin-top: 2px; }
+    .rp-conceptos-title { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--verde-light); font-weight: 700; margin-bottom: 10px; }
+    .rp-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--beige-light); }
+    .rp-row-left  { display: flex; align-items: center; gap: 10px; }
+    .rp-letra { width: 22px; height: 22px; background: var(--verde); color: var(--beige); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; flex-shrink: 0; }
+    .rp-concepto { font-size: 13px; color: var(--verde); }
+    .rp-monto { font-family: Georgia, serif; font-size: 14px; font-weight: 700; color: var(--verde); }
+    .rp-total-row { background: var(--verde); color: var(--beige); padding: 14px; display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+    .rp-total-lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }
+    .rp-total-val { font-family: Georgia, serif; font-size: 24px; font-weight: 900; }
+    .rp-obs { background: var(--beige-mid); padding: 10px 28px; font-size: 12px; color: var(--verde); }
+    .rp-footer { border-top: 1px solid var(--beige); padding: 12px 28px; display: flex; justify-content: space-between; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--verde); opacity: .6; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align: center; padding: 48px 20px; }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: .4; }
+    .empty-state p { color: var(--verde); opacity: .6; }
+
+    /* ── PENDIENTE PAGE ── */
+    .status-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .status-box { background: var(--white); border: 1px solid var(--beige); padding: 40px; text-align: center; max-width: 420px; width: 100%; box-shadow: var(--shadow); }
+    .status-icon { font-size: 48px; margin-bottom: 16px; }
+    .status-box h2 { font-family: Georgia, serif; font-size: 20px; color: var(--verde); margin-bottom: 10px; }
+    .status-box p  { font-size: 13px; color: var(--verde); opacity: .7; line-height: 1.6; }
+
+    /* ── TABS (admin) ── */
+    .tabs { display: flex; border-bottom: 2px solid var(--beige); margin-bottom: 24px; }
+    .tab-btn { background: none; border: none; padding: 10px 20px; font-size: 13px; font-weight: 700; font-family: inherit; color: var(--verde); opacity: .5; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .2s; }
+    .tab-btn.active { opacity: 1; border-bottom-color: var(--verde); }
+    .tab-btn:hover   { opacity: .8; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    @media (max-width: 600px) {
+      .form-grid-2 { grid-template-columns: 1fr; }
+      .rp-empleado  { grid-template-columns: 1fr; }
+      .nav-user { display: none; }
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area { position: fixed; inset: 0; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="app-loader">
+  <div class="logo-big">R</div>
+  <p>Supermercados Rufino</p>
+</div>
+
+<!-- PRINT AREA (hidden, only for printing) -->
+<div id="print-area" class="hidden"></div>
+
+<!-- ══════════════════════════════════════
+     SECCIÓN: LOGIN
+════════════════════════════════════════ -->
+<div id="section-login" class="hidden">
+  <div class="auth-wrap">
+    <div class="auth-header">
+      <div class="auth-logo">R</div>
+      <h1>FCSL II SRL</h1>
+      <p>Supermercados Rufino</p>
+      <div class="auth-divider"></div>
+      <span class="auth-sub">Sistema de Recibos de Haberes</span>
+    </div>
+    <div class="card card-sm">
+      <h2 style="font-family:Georgia,serif;font-size:18px;margin-bottom:20px;text-align:center;">Ingresar al Sistema</h2>
+      <div id="login-error" class="alert alert-error hidden"></div>
+      <div class="form-group">
+        <label class="lbl">Correo electrónico</label>
+        <input type="email" id="login-email" placeholder="tu@email.com" />
+      </div>
+      <div class="form-group">
+        <label class="lbl">Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doLogin()">Ingresar</button>
+      <p style="text-align:center;font-size:13px;margin-top:16px;color:var(--verde);opacity:.7;">
+        ¿No tenés cuenta?
+        <a href="#" onclick="showSection('section-register')" style="color:var(--verde);font-weight:700;">Registrarse</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECCIÓN: REGISTRO
+════════════════════════════════════════ -->
+<div id="section-register" class="hidden">
+  <div class="auth-wrap">
+    <div class="auth-header">
+      <div class="auth-logo">R</div>
+      <h1>FCSL II SRL</h1>
+      <p>Supermercados Rufino</p>
+      <div class="auth-divider"></div>
+      <span class="auth-sub">Crear cuenta de empleado</span>
+    </div>
+    <div class="card card-md">
+      <h2 style="font-family:Georgia,serif;font-size:18px;margin-bottom:20px;text-align:center;">Registro</h2>
+      <div id="register-error"   class="alert alert-error   hidden"></div>
+      <div id="register-success" class="alert alert-success hidden"></div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="lbl">Apellido</label>
+          <input type="text" id="reg-apellido" placeholder="Apellido" />
+        </div>
+        <div class="form-group">
+          <label class="lbl">Nombre</label>
+          <input type="text" id="reg-nombre" placeholder="Nombre" />
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="lbl">DNI</label>
+          <input type="text" id="reg-dni" placeholder="12345678" />
+        </div>
+        <div class="form-group">
+          <label class="lbl">Ocupación</label>
+          <input type="text" id="reg-ocupacion" placeholder="Cajero/a, Repositor/a..." />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="lbl">Correo electrónico</label>
+        <input type="email" id="reg-email" placeholder="tu@email.com" />
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="lbl">Contraseña</label>
+          <input type="password" id="reg-password" placeholder="Mínimo 6 caracteres" />
+        </div>
+        <div class="form-group">
+          <label class="lbl">Confirmar contraseña</label>
+          <input type="password" id="reg-confirm" placeholder="Repetir contraseña" />
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doRegister()">Crear Cuenta</button>
+      <p style="text-align:center;font-size:13px;margin-top:16px;color:var(--verde);opacity:.7;">
+        ¿Ya tenés cuenta?
+        <a href="#" onclick="showSection('section-login')" style="color:var(--verde);font-weight:700;">Ingresar</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECCIÓN: PENDIENTE
+════════════════════════════════════════ -->
+<div id="section-pendiente" class="hidden">
+  <div class="status-page">
+    <div class="status-box">
+      <div class="status-icon">⏳</div>
+      <h2>Cuenta Pendiente</h2>
+      <p>Tu cuenta fue registrada. Un administrador debe aprobar tu acceso antes de que puedas ingresar.</p>
+      <p style="margin-top:10px;">Contactá a tu supervisor para que apruebe tu acceso.</p>
+      <button class="btn btn-secondary" style="margin-top:24px;" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECCIÓN: RECHAZADO
+════════════════════════════════════════ -->
+<div id="section-rechazado" class="hidden">
+  <div class="status-page">
+    <div class="status-box">
+      <div class="status-icon">🚫</div>
+      <h2>Acceso No Autorizado</h2>
+      <p>Tu cuenta no fue aprobada. Contactá a tu supervisor para más información.</p>
+      <button class="btn btn-secondary" style="margin-top:24px;" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SECCIÓN: ADMIN
+════════════════════════════════════════ -->
+<div id="section-admin" class="hidden">
+  <nav>
+    <div class="nav-brand">
+      <div class="nav-logo">R</div>
+      <div class="nav-brand-text">
+        <strong>FCSL II SRL</strong>
+        <span>Supermercados Rufino</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <span class="nav-user" id="admin-nav-user"></span>
+      <button class="nav-btn" onclick="showAdminTab('tab-dashboard')">Panel</button>
+      <button class="nav-btn" onclick="showAdminTab('tab-empleados')">Empleados</button>
+      <button class="nav-btn" onclick="showAdminTab('tab-recibos')">Recibos</button>
+      <button class="nav-btn" onclick="doLogout()">Salir</button>
+    </div>
+  </nav>
+
+  <div style="max-width:960px;margin:0 auto;padding:28px 20px;">
+
+    <!-- TAB: DASHBOARD -->
+    <div id="tab-dashboard" class="tab-panel active">
+      <div class="section-header">
+        <div>
+          <h2>Panel de Administración</h2>
+          <p id="admin-welcome"></p>
+        </div>
+      </div>
+      <div class="stats-grid" id="admin-stats"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">
+        <div class="card" style="cursor:pointer;" onclick="showAdminTab('tab-empleados')">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:48px;height:48px;background:var(--verde);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">👥</div>
+            <div>
+              <div style="font-family:Georgia,serif;font-weight:700;font-size:15px;">Gestión de Empleados</div>
+              <div style="font-size:12px;opacity:.6;margin-top:2px;">Aprobar registros y ver listado</div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="cursor:pointer;" onclick="showAdminTab('tab-recibos')">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:48px;height:48px;background:var(--verde);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">📄</div>
+            <div>
+              <div style="font-family:Georgia,serif;font-weight:700;font-size:15px;">Gestión de Recibos</div>
+              <div style="font-size:12px;opacity:.6;margin-top:2px;">Cargar, editar y consultar recibos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: EMPLEADOS -->
+    <div id="tab-empleados" class="tab-panel">
+      <div class="section-header">
+        <div><h2>Empleados</h2><p id="empleados-count"></p></div>
+      </div>
+      <div class="filter-bar">
+        <select id="filtro-estado-emp" onchange="renderEmpleados()">
+          <option value="">Todos</option>
+          <option value="pendiente">Pendientes</option>
+          <option value="aprobado">Aprobados</option>
+          <option value="rechazado">Rechazados</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Apellido y Nombre</th>
+              <th>DNI</th>
+              <th>Ocupación</th>
+              <th>Estado</th>
+              <th>Registro</th>
+              <th class="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-empleados"></tbody>
+        </table>
+      </div>
+      <div id="empleados-empty" class="empty-state hidden">
+        <div class="empty-icon">👥</div>
+        <p>No hay empleados en esta categoría.</p>
+      </div>
+    </div>
+
+    <!-- TAB: RECIBOS ADMIN -->
+    <div id="tab-recibos" class="tab-panel">
+      <div class="section-header">
+        <div><h2>Recibos de Haberes</h2><p id="recibos-admin-count"></p></div>
+        <button class="btn btn-primary" onclick="abrirFormRecibo(null)">+ Nuevo Recibo</button>
+      </div>
+      <div class="filter-bar">
+        <select id="filtro-emp-recibo" onchange="renderRecibosAdmin()">
+          <option value="">Todos los empleados</option>
+        </select>
+        <select id="filtro-anio-recibo" onchange="renderRecibosAdmin()">
+          <option value="">Todos los años</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Empleado</th>
+              <th>Período</th>
+              <th class="text-right">A — Sueldo</th>
+              <th class="text-right">B — Mercadería</th>
+              <th class="text-right">C — Adelantos</th>
+              <th class="text-right">D — Efectivo</th>
+              <th class="text-right">Total</th>
+              <th class="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-recibos-admin"></tbody>
+        </table>
+      </div>
+      <div id="recibos-admin-empty" class="empty-state hidden">
+        <div class="empty-icon">📄</div>
+        <p>No hay recibos para mostrar.</p>
+      </div>
+    </div>
+
+  </div><!-- /max-width -->
+</div>
+
+<!-- ══════════════════════════════════════
+     SECCIÓN: EMPLEADO
+════════════════════════════════════════ -->
+<div id="section-empleado" class="hidden">
+  <nav>
+    <div class="nav-brand">
+      <div class="nav-logo">R</div>
+      <div class="nav-brand-text">
+        <strong>FCSL II SRL</strong>
+        <span>Supermercados Rufino</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <span class="nav-user" id="emp-nav-user"></span>
+      <button class="nav-btn" onclick="showEmpTab('tab-emp-inicio')">Inicio</button>
+      <button class="nav-btn" onclick="showEmpTab('tab-emp-recibos')">Mis Recibos</button>
+      <button class="nav-btn" onclick="doLogout()">Salir</button>
+    </div>
+  </nav>
+
+  <div style="max-width:960px;margin:0 auto;padding:28px 20px;">
+
+    <!-- TAB: INICIO EMPLEADO -->
+    <div id="tab-emp-inicio" class="tab-panel active">
+      <div class="section-header">
+        <div>
+          <h2 id="emp-welcome">Bienvenido/a</h2>
+          <p id="emp-info"></p>
+        </div>
+      </div>
+      <div class="stats-grid" id="emp-stats"></div>
+      <div class="card" style="cursor:pointer;" onclick="showEmpTab('tab-emp-recibos')">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:48px;height:48px;background:var(--verde);display:flex;align-items:center;justify-content:center;font-size:22px;">📄</div>
+          <div>
+            <div style="font-family:Georgia,serif;font-weight:700;font-size:15px;">Ver Mis Recibos</div>
+            <div style="font-size:12px;opacity:.6;margin-top:2px;">Consultá tu historial completo de haberes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: RECIBOS EMPLEADO -->
+    <div id="tab-emp-recibos" class="tab-panel">
+      <div class="section-header">
+        <div><h2>Mis Recibos</h2><p id="emp-recibos-count"></p></div>
+      </div>
+      <div class="filter-bar">
+        <select id="filtro-anio-emp" onchange="renderRecibosEmpleado()">
+          <option value="">Todos los años</option>
+        </select>
+        <select id="filtro-mes-emp" onchange="renderRecibosEmpleado()">
+          <option value="">Todos los meses</option>
+        </select>
+      </div>
+      <div id="lista-recibos-emp"></div>
+      <div id="recibos-emp-empty" class="empty-state hidden">
+        <div class="empty-icon">📄</div>
+        <p>Aún no hay recibos cargados para tu cuenta.</p>
+        <p style="margin-top:6px;font-size:12px;">Cuando un administrador los cargue, aparecerán aquí.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: FORM RECIBO
+════════════════════════════════════════ -->
+<div id="modal-recibo" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modal-recibo-title">Nuevo Recibo B</h3>
+      <button class="modal-close" onclick="cerrarModal('modal-recibo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-recibo-error" class="alert alert-error hidden"></div>
+      <div class="form-grid-2" style="margin-bottom:14px;">
+        <div class="form-group">
+          <label class="lbl">Empleado</label>
+          <select id="form-emp-id"></select>
+        </div>
+        <div class="form-group">
+          <label class="lbl">Período</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <select id="form-mes"></select>
+            <select id="form-anio"></select>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:14px;">
+        <div class="form-group">
+          <label class="lbl">A — Recibo Sueldo</label>
+          <input type="number" id="form-a" step="0.01" min="0" placeholder="0.00" oninput="calcularD()" />
+        </div>
+        <div class="form-group">
+          <label class="lbl">B — Mercadería</label>
+          <input type="number" id="form-b" step="0.01" min="0" placeholder="0.00" oninput="calcularD()" />
+        </div>
+        <div class="form-group">
+          <label class="lbl">C — Adelantos</label>
+          <input type="number" id="form-c" step="0.01" min="0" placeholder="0.00" oninput="calcularD()" />
+        </div>
+        <div class="form-group">
+          <label class="lbl">Total</label>
+          <input type="number" id="form-total" step="0.01" min="0" placeholder="0.00" oninput="calcularD()" />
+        </div>
+      </div>
+      <!-- D calculado -->
+      <div style="background:var(--verde);color:var(--beige);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">D — Efectivo (automático)</span>
+        <span id="preview-d" style="font-family:Georgia,serif;font-size:20px;font-weight:900;">$ 0,00</span>
+      </div>
+      <div class="form-group">
+        <label class="lbl">Observaciones (opcional)</label>
+        <input type="text" id="form-obs" placeholder="Notas adicionales..." />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="guardarRecibo()" id="btn-guardar-recibo">Guardar Recibo</button>
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-recibo')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: VER RECIBO (empleado)
+════════════════════════════════════════ -->
+<div id="modal-ver-recibo" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="modal-ver-titulo">Recibo B</h3>
+      <button class="modal-close" onclick="cerrarModal('modal-ver-recibo')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-ver-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="imprimirRecibo()">🖨 Imprimir / Guardar PDF</button>
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-ver-recibo')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════ -->
+<script>
+// ── CONFIGURACIÓN SUPABASE ──────────────────────────────────
+// IMPORTANTE: Reemplazá estos valores con los de tu proyecto Supabase
+const SUPABASE_URL  = 'TU_SUPABASE_URL_AQUI'
+const SUPABASE_ANON = 'TU_SUPABASE_ANON_KEY_AQUI'
+// ────────────────────────────────────────────────────────────
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
+
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+               'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+const ANIO_ACTUAL = new Date().getFullYear()
+
+// Estado global
+let currentUser    = null
+let currentProfile = null
+let allEmpleados   = []
+let allRecibos     = []
+let editandoReciboId = null
+let reciboParaImprimir = null
+
+// ── HELPERS ────────────────────────────────────────────────
+function $(id)  { return document.getElementById(id) }
+function fmt(n) {
+  return new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS', minimumFractionDigits:2 }).format(n || 0)
+}
+function fmtFecha(str) {
+  return new Date(str).toLocaleDateString('es-AR')
+}
+function showSection(id) {
+  ['section-login','section-register','section-pendiente',
+   'section-rechazado','section-admin','section-empleado'].forEach(s => {
+    const el = $(s)
+    if (el) el.classList.add('hidden')
+  })
+  const target = $(id)
+  if (target) target.classList.remove('hidden')
+}
+function showAlert(id, msg, tipo = 'error') {
+  const el = $(id)
+  if (!el) return
+  el.className = `alert alert-${tipo}`
+  el.textContent = msg
+  el.classList.remove('hidden')
+}
+function hideAlert(id) {
+  const el = $(id)
+  if (el) el.classList.add('hidden')
+}
+function cerrarModal(id) { $(id).classList.add('hidden') }
+
+// ── ADMIN TABS ──────────────────────────────────────────────
+function showAdminTab(tabId) {
+  ['tab-dashboard','tab-empleados','tab-recibos'].forEach(t => {
+    const el = $(t)
+    if (el) el.classList.remove('active')
+  })
+  const el = $(tabId)
+  if (el) el.classList.add('active')
+  if (tabId === 'tab-empleados') cargarEmpleados()
+  if (tabId === 'tab-recibos')   cargarRecibosAdmin()
+  if (tabId === 'tab-dashboard') cargarDashboardAdmin()
+}
+
+// ── EMPLEADO TABS ───────────────────────────────────────────
+function showEmpTab(tabId) {
+  ['tab-emp-inicio','tab-emp-recibos'].forEach(t => {
+    const el = $(t)
+    if (el) el.classList.remove('active')
+  })
+  const el = $(tabId)
+  if (el) el.classList.add('active')
+  if (tabId === 'tab-emp-recibos') cargarRecibosEmpleado()
+  if (tabId === 'tab-emp-inicio')  cargarDashboardEmpleado()
+}
+
+// ── AUTH ────────────────────────────────────────────────────
+async function doLogin() {
+  hideAlert('login-error')
+  const email    = $('login-email').value.trim()
+  const password = $('login-password').value
+  if (!email || !password) { showAlert('login-error', 'Completá todos los campos.'); return }
+
+  const btn = document.querySelector('#section-login .btn-primary')
+  btn.disabled = true; btn.textContent = 'Ingresando...'
+
+  const { error } = await sb.auth.signInWithPassword({ email, password })
+  btn.disabled = false; btn.textContent = 'Ingresar'
+
+  if (error) { showAlert('login-error', 'Email o contraseña incorrectos.'); return }
+  await cargarSesion()
+}
+
+async function doRegister() {
+  hideAlert('register-error')
+  hideAlert('register-success')
+  const apellido  = $('reg-apellido').value.trim()
+  const nombre    = $('reg-nombre').value.trim()
+  const dni       = $('reg-dni').value.trim()
+  const ocupacion = $('reg-ocupacion').value.trim()
+  const email     = $('reg-email').value.trim()
+  const password  = $('reg-password').value
+  const confirm   = $('reg-confirm').value
+
+  if (!apellido||!nombre||!dni||!ocupacion||!email||!password) {
+    showAlert('register-error', 'Completá todos los campos.'); return
+  }
+  if (password !== confirm) { showAlert('register-error', 'Las contraseñas no coinciden.'); return }
+  if (password.length < 6)  { showAlert('register-error', 'La contraseña debe tener al menos 6 caracteres.'); return }
+
+  const btn = document.querySelector('#section-register .btn-primary')
+  btn.disabled = true; btn.textContent = 'Registrando...'
+
+  const { error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { apellido, nombre, dni, ocupacion } }
+  })
+  btn.disabled = false; btn.textContent = 'Crear Cuenta'
+
+  if (error) {
+    showAlert('register-error', error.message.includes('already') ? 'Ya existe una cuenta con ese email.' : 'Error al registrarse.')
+    return
+  }
+  showAlert('register-success', '¡Cuenta creada! Esperá la aprobación del administrador.', 'success')
+  setTimeout(() => showSection('section-login'), 2500)
+}
+
+async function doLogout() {
+  await sb.auth.signOut()
+  currentUser = null; currentProfile = null
+  showSection('section-login')
+}
+
+// ── SESIÓN ──────────────────────────────────────────────────
+async function cargarSesion() {
+  const { data: { session } } = await sb.auth.getSession()
+  if (!session) { showSection('section-login'); return }
+
+  currentUser = session.user
+  const { data: profile } = await sb
+    .from('profiles').select('*').eq('id', currentUser.id).single()
+
+  if (!profile) { showSection('section-login'); return }
+  currentProfile = profile
+
+  if (profile.rol === 'admin') {
+    $('admin-nav-user').textContent = `${profile.apellido}, ${profile.nombre}`
+    $('admin-welcome').textContent  = `Bienvenido/a, ${profile.nombre} ${profile.apellido}`
+    showSection('section-admin')
+    await cargarDashboardAdmin()
+    return
+  }
+
+  if (profile.estado === 'pendiente')  { showSection('section-pendiente'); return }
+  if (profile.estado === 'rechazado')  { showSection('section-rechazado'); return }
+
+  // Empleado aprobado
+  $('emp-nav-user').textContent = `${profile.apellido}, ${profile.nombre}`
+  $('emp-welcome').textContent  = `Bienvenido/a, ${profile.nombre}`
+  $('emp-info').textContent     = `${profile.ocupacion} · DNI ${profile.dni}`
+  showSection('section-empleado')
+  await cargarDashboardEmpleado()
+}
+
+// ── ADMIN: DASHBOARD ────────────────────────────────────────
+async function cargarDashboardAdmin() {
+  const [{ count: activos }, { count: pendientes }, { count: totalRec }] = await Promise.all([
+    sb.from('profiles').select('*',{count:'exact',head:true}).eq('rol','empleado').eq('estado','aprobado'),
+    sb.from('profiles').select('*',{count:'exact',head:true}).eq('estado','pendiente'),
+    sb.from('recibos').select('*',{count:'exact',head:true}),
+  ])
+  const now = new Date()
+  const { count: recMes } = await sb.from('recibos').select('*',{count:'exact',head:true})
+    .eq('periodo_mes', now.getMonth()+1).eq('periodo_anio', now.getFullYear())
+
+  $('admin-stats').innerHTML = `
+    <div class="stat-card"><div class="num">${activos||0}</div><div class="lbl-stat">Empleados Activos</div></div>
+    <div class="stat-card ${pendientes>0?'warn':''}"><div class="num">${pendientes||0}</div><div class="lbl-stat">Pendientes Aprobación</div></div>
+    <div class="stat-card"><div class="num">${totalRec||0}</div><div class="lbl-stat">Recibos Totales</div></div>
+    <div class="stat-card"><div class="num">${recMes||0}</div><div class="lbl-stat">Recibos Este Mes</div></div>
+  `
+}
+
+// ── ADMIN: EMPLEADOS ────────────────────────────────────────
+async function cargarEmpleados() {
+  const { data } = await sb.from('profiles').select('*')
+    .eq('rol','empleado').order('apellido')
+  allEmpleados = data || []
+  renderEmpleados()
+}
+
+function renderEmpleados() {
+  const filtro = $('filtro-estado-emp').value
+  const lista  = filtro ? allEmpleados.filter(e => e.estado === filtro) : allEmpleados
+  const activos    = allEmpleados.filter(e => e.estado === 'aprobado').length
+  const pendientes = allEmpleados.filter(e => e.estado === 'pendiente').length
+  $('empleados-count').textContent = `${activos} activos · ${pendientes} pendientes`
+
+  const tbody = $('tabla-empleados')
+  if (lista.length === 0) {
+    tbody.innerHTML = ''
+    $('empleados-empty').classList.remove('hidden')
+    return
+  }
+  $('empleados-empty').classList.add('hidden')
+
+  tbody.innerHTML = lista.map(e => {
+    const badge = { aprobado:'badge-approved', pendiente:'badge-pending', rechazado:'badge-rejected' }
+    const label = { aprobado:'Aprobado', pendiente:'Pendiente', rechazado:'Rechazado' }
+    let acciones = ''
+    if (e.estado === 'pendiente') {
+      acciones = `
+        <button class="btn btn-success btn-sm" onclick="cambiarEstado('${e.id}','aprobado')">Aprobar</button>
+        <button class="btn btn-danger  btn-sm" onclick="cambiarEstado('${e.id}','rechazado')">Rechazar</button>`
+    } else if (e.estado === 'aprobado') {
+      acciones = `<button class="btn btn-danger btn-sm" onclick="cambiarEstado('${e.id}','rechazado')">Suspender</button>`
+    } else {
+      acciones = `<button class="btn btn-success btn-sm" onclick="cambiarEstado('${e.id}','aprobado')">Rehabilitar</button>`
+    }
+    return `
+      <tr>
+        <td class="td-bold">${e.apellido}, ${e.nombre}</td>
+        <td>${e.dni}</td>
+        <td>${e.ocupacion}</td>
+        <td><span class="badge ${badge[e.estado]}">${label[e.estado]}</span></td>
+        <td>${fmtFecha(e.created_at)}</td>
+        <td class="td-actions">${acciones}</td>
+      </tr>`
+  }).join('')
+}
+
+async function cambiarEstado(id, nuevoEstado) {
+  await sb.from('profiles').update({ estado: nuevoEstado }).eq('id', id)
+  await cargarEmpleados()
+  await cargarDashboardAdmin()
+}
+
+// ── ADMIN: RECIBOS ──────────────────────────────────────────
+async function cargarRecibosAdmin() {
+  const { data } = await sb.from('recibos')
+    .select('*, profiles:empleado_id(apellido,nombre,dni,ocupacion)')
+    .order('periodo_anio', { ascending: false })
+    .order('periodo_mes',  { ascending: false })
+  allRecibos = data || []
+
+  // Llenar filtro empleados
+  const { data: emps } = await sb.from('profiles').select('id,apellido,nombre')
+    .eq('rol','empleado').eq('estado','aprobado').order('apellido')
+  const selEmp = $('filtro-emp-recibo')
+  selEmp.innerHTML = '<option value="">Todos los empleados</option>' +
+    (emps||[]).map(e => `<option value="${e.id}">${e.apellido}, ${e.nombre}</option>`).join('')
+
+  // Llenar filtro años
+  const anios = [...new Set(allRecibos.map(r => r.periodo_anio))].sort((a,b)=>b-a)
+  const selAnio = $('filtro-anio-recibo')
+  selAnio.innerHTML = '<option value="">Todos los años</option>' +
+    anios.map(a => `<option value="${a}">${a}</option>`).join('')
+
+  $('recibos-admin-count').textContent = `${allRecibos.length} recibos en el sistema`
+  renderRecibosAdmin()
+}
+
+function renderRecibosAdmin() {
+  const filtroEmp  = $('filtro-emp-recibo').value
+  const filtroAnio = $('filtro-anio-recibo').value
+  let lista = allRecibos
+  if (filtroEmp)  lista = lista.filter(r => r.empleado_id === filtroEmp)
+  if (filtroAnio) lista = lista.filter(r => r.periodo_anio.toString() === filtroAnio)
+
+  const tbody = $('tabla-recibos-admin')
+  if (lista.length === 0) {
+    tbody.innerHTML = ''
+    $('recibos-admin-empty').classList.remove('hidden')
+    return
+  }
+  $('recibos-admin-empty').classList.add('hidden')
+
+  tbody.innerHTML = lista.map(r => `
+    <tr>
+      <td class="td-bold">${r.profiles?.apellido||''}, ${r.profiles?.nombre||''}</td>
+      <td>${MESES[r.periodo_mes-1]} ${r.periodo_anio}</td>
+      <td class="text-right">${fmt(r.recibo_a)}</td>
+      <td class="text-right">${fmt(r.recibo_b)}</td>
+      <td class="text-right">${fmt(r.recibo_c)}</td>
+      <td class="text-right">${fmt(r.recibo_d)}</td>
+      <td class="text-right td-bold">${fmt(r.total)}</td>
+      <td class="td-actions">
+        <button class="btn btn-secondary btn-sm" onclick="abrirFormRecibo('${r.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm"    onclick="eliminarRecibo('${r.id}')">Eliminar</button>
+      </td>
+    </tr>`).join('')
+}
+
+// ── FORM RECIBO ─────────────────────────────────────────────
+async function abrirFormRecibo(reciboId) {
+  editandoReciboId = reciboId
+  hideAlert('modal-recibo-error')
+
+  // Llenar select empleados
+  const { data: emps } = await sb.from('profiles').select('id,apellido,nombre')
+    .eq('rol','empleado').eq('estado','aprobado').order('apellido')
+  const selEmp = $('form-emp-id')
+  selEmp.innerHTML = '<option value="">Seleccionar empleado...</option>' +
+    (emps||[]).map(e => `<option value="${e.id}">${e.apellido}, ${e.nombre}</option>`).join('')
+
+  // Llenar meses
+  const selMes = $('form-mes')
+  selMes.innerHTML = MESES.map((m,i) => `<option value="${i+1}">${m}</option>`).join('')
+
+  // Llenar años
+  const selAnio = $('form-anio')
+  selAnio.innerHTML = Array.from({length:6},(_,i)=>ANIO_ACTUAL-i)
+    .map(a => `<option value="${a}">${a}</option>`).join('')
+
+  if (reciboId) {
+    // Editar: pre-llenar
+    const recibo = allRecibos.find(r => r.id === reciboId)
+    if (recibo) {
+      selEmp.value         = recibo.empleado_id
+      selEmp.disabled      = true
+      $('form-mes').value  = recibo.periodo_mes
+      $('form-anio').value = recibo.periodo_anio
+      $('form-a').value    = recibo.recibo_a
+      $('form-b').value    = recibo.recibo_b
+      $('form-c').value    = recibo.recibo_c
+      $('form-total').value= recibo.total
+      $('form-obs').value  = recibo.observaciones || ''
+      calcularD()
+    }
+    $('modal-recibo-title').textContent    = 'Editar Recibo B'
+    $('btn-guardar-recibo').textContent    = 'Actualizar Recibo'
+  } else {
+    selEmp.disabled      = false
+    $('form-mes').value  = new Date().getMonth() + 1
+    $('form-anio').value = ANIO_ACTUAL
+    $('form-a').value    = ''
+    $('form-b').value    = ''
+    $('form-c').value    = ''
+    $('form-total').value= ''
+    $('form-obs').value  = ''
+    $('preview-d').textContent = '$ 0,00'
+    $('modal-recibo-title').textContent = 'Nuevo Recibo B'
+    $('btn-guardar-recibo').textContent  = 'Guardar Recibo'
+  }
+  $('modal-recibo').classList.remove('hidden')
+}
+
+function calcularD() {
+  const t = parseFloat($('form-total').value) || 0
+  const a = parseFloat($('form-a').value)     || 0
+  const b = parseFloat($('form-b').value)     || 0
+  const c = parseFloat($('form-c').value)     || 0
+  $('preview-d').textContent = fmt(t - a - b - c)
+}
+
+async function guardarRecibo() {
+  hideAlert('modal-recibo-error')
+  const emp_id = $('form-emp-id').value
+  const mes    = parseInt($('form-mes').value)
+  const anio   = parseInt($('form-anio').value)
+  const total  = parseFloat($('form-total').value)
+  const a      = parseFloat($('form-a').value) || 0
+  const b      = parseFloat($('form-b').value) || 0
+  const c      = parseFloat($('form-c').value) || 0
+  const obs    = $('form-obs').value.trim() || null
+
+  if (!emp_id)      { showAlert('modal-recibo-error', 'Seleccioná un empleado.'); return }
+  if (isNaN(total)) { showAlert('modal-recibo-error', 'Ingresá el total.'); return }
+
+  const btn = $('btn-guardar-recibo')
+  btn.disabled = true; btn.textContent = 'Guardando...'
+
+  const payload = {
+    empleado_id: emp_id, periodo_mes: mes, periodo_anio: anio,
+    total, recibo_a: a, recibo_b: b, recibo_c: c, observaciones: obs
+  }
+
+  let error
+  if (editandoReciboId) {
+    ({ error } = await sb.from('recibos').update(payload).eq('id', editandoReciboId))
+  } else {
+    ({ error } = await sb.from('recibos').insert(payload))
+  }
+
+  btn.disabled = false; btn.textContent = editandoReciboId ? 'Actualizar Recibo' : 'Guardar Recibo'
+
+  if (error) {
+    showAlert('modal-recibo-error', error.code === '23505'
+      ? 'Ya existe un recibo para ese empleado en ese período.'
+      : 'Error al guardar el recibo.')
+    return
+  }
+  cerrarModal('modal-recibo')
+  await cargarRecibosAdmin()
+}
+
+async function eliminarRecibo(id) {
+  if (!confirm('¿Eliminar este recibo? Esta acción no se puede deshacer.')) return
+  await sb.from('recibos').delete().eq('id', id)
+  await cargarRecibosAdmin()
+}
+
+// ── EMPLEADO: DASHBOARD ─────────────────────────────────────
+async function cargarDashboardEmpleado() {
+  const { count: total } = await sb.from('recibos')
+    .select('*',{count:'exact',head:true}).eq('empleado_id', currentUser.id)
+
+  const { data: ultimo } = await sb.from('recibos').select('*')
+    .eq('empleado_id', currentUser.id)
+    .order('periodo_anio',{ascending:false}).order('periodo_mes',{ascending:false}).limit(1)
+
+  let htmlUltimo = '<div style="opacity:.6;font-size:13px;">Aún no hay recibos cargados.</div>'
+  if (ultimo && ultimo.length > 0) {
+    const u = ultimo[0]
+    htmlUltimo = `
+      <div style="font-family:Georgia,serif;font-size:18px;font-weight:700;">${MESES[u.periodo_mes-1]} ${u.periodo_anio}</div>
+      <div style="font-family:Georgia,serif;font-size:28px;font-weight:900;color:var(--verde);margin:4px 0 12px;">${fmt(u.total)}</div>
+      <button class="btn btn-primary btn-sm" onclick="showEmpTab('tab-emp-recibos')">Ver Detalle</button>`
+  }
+
+  $('emp-stats').innerHTML = `
+    <div class="stat-card">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;opacity:.6;margin-bottom:8px;">Último Recibo</div>
+      ${htmlUltimo}
+    </div>
+    <div class="stat-card">
+      <div class="num">${total||0}</div>
+      <div class="lbl-stat">Recibos Registrados</div>
+    </div>`
+}
+
+// ── EMPLEADO: RECIBOS ────────────────────────────────────────
+async function cargarRecibosEmpleado() {
+  const { data } = await sb.from('recibos').select('*')
+    .eq('empleado_id', currentUser.id)
+    .order('periodo_anio',{ascending:false}).order('periodo_mes',{ascending:false})
+  allRecibos = data || []
+
+  const anios = [...new Set(allRecibos.map(r => r.periodo_anio))].sort((a,b)=>b-a)
+  const selAnio = $('filtro-anio-emp')
+  selAnio.innerHTML = '<option value="">Todos los años</option>' +
+    anios.map(a => `<option value="${a}">${a}</option>`).join('')
+
+  const selMes = $('filtro-mes-emp')
+  selMes.innerHTML = '<option value="">Todos los meses</option>' +
+    MESES.map((m,i) => `<option value="${i+1}">${m}</option>`).join('')
+
+  $('emp-recibos-count').textContent = `${allRecibos.length} recibos registrados`
+  renderRecibosEmpleado()
+}
+
+function renderRecibosEmpleado() {
+  const filtroAnio = $('filtro-anio-emp').value
+  const filtroMes  = $('filtro-mes-emp').value
+  let lista = allRecibos
+  if (filtroAnio) lista = lista.filter(r => r.periodo_anio.toString() === filtroAnio)
+  if (filtroMes)  lista = lista.filter(r => r.periodo_mes.toString()  === filtroMes)
+
+  const contenedor = $('lista-recibos-emp')
+  if (lista.length === 0) {
+    contenedor.innerHTML = ''
+    $('recibos-emp-empty').classList.remove('hidden')
+    return
+  }
+  $('recibos-emp-empty').classList.add('hidden')
+
+  contenedor.innerHTML = lista.map(r => `
+    <div class="recibo-card">
+      <div class="recibo-card-header">
+        <div>
+          <div class="periodo">${MESES[r.periodo_mes-1]} ${r.periodo_anio}</div>
+          <div class="tipo">Recibo B — Haberes</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="verRecibo('${r.id}')">Ver / Imprimir</button>
+      </div>
+      <div class="recibo-card-body">
+        <div class="recibo-item"><div class="ri-lbl">A — Sueldo</div><div class="ri-val">${fmt(r.recibo_a)}</div></div>
+        <div class="recibo-item"><div class="ri-lbl">B — Mercadería</div><div class="ri-val">${fmt(r.recibo_b)}</div></div>
+        <div class="recibo-item"><div class="ri-lbl">C — Adelantos</div><div class="ri-val">${fmt(r.recibo_c)}</div></div>
+        <div class="recibo-item"><div class="ri-lbl">D — Efectivo</div><div class="ri-val">${fmt(r.recibo_d)}</div></div>
+        <div class="recibo-total-box">
+          <div class="rt-lbl">Total</div>
+          <div class="rt-val">${fmt(r.total)}</div>
+        </div>
+      </div>
+      ${r.observaciones ? `<div style="padding:10px 20px;font-size:12px;color:var(--verde);opacity:.7;border-top:1px solid var(--beige-mid);">📝 ${r.observaciones}</div>` : ''}
+    </div>`).join('')
+}
+
+function verRecibo(id) {
+  const r = allRecibos.find(x => x.id === id)
+  if (!r) return
+  reciboParaImprimir = r
+  $('modal-ver-titulo').textContent = `Recibo B — ${MESES[r.periodo_mes-1]} ${r.periodo_anio}`
+  $('modal-ver-body').innerHTML = buildReciboPrint(r, currentProfile)
+  $('modal-ver-recibo').classList.remove('hidden')
+}
+
+function buildReciboPrint(r, p) {
+  const conceptos = [
+    { letra:'A', nombre:'Recibo de Sueldo', valor: r.recibo_a },
+    { letra:'B', nombre:'Mercadería',        valor: r.recibo_b },
+    { letra:'C', nombre:'Adelantos',         valor: r.recibo_c },
+    { letra:'D', nombre:'Efectivo',          valor: r.recibo_d },
+  ]
+  return `
+    <div class="recibo-print" id="recibo-printable">
+      <div class="rp-header">
+        <div>
+          <div class="rp-empresa-name">FCSL II SRL</div>
+          <div class="rp-empresa-sub">Supermercados Rufino</div>
+        </div>
+        <div class="rp-tipo">
+          <div class="rp-tipo-lbl">Recibo</div>
+          <div class="rp-tipo-val">B</div>
+        </div>
+      </div>
+      <div class="rp-periodo">Período: ${MESES[r.periodo_mes-1]} ${r.periodo_anio}</div>
+      <div class="rp-body">
+        <div class="rp-empleado">
+          <div><div class="rp-field-lbl">Apellido y Nombre</div><div class="rp-field-val">${p.apellido}, ${p.nombre}</div></div>
+          <div><div class="rp-field-lbl">DNI</div><div class="rp-field-val">${p.dni}</div></div>
+          <div><div class="rp-field-lbl">Ocupación</div><div class="rp-field-val">${p.ocupacion}</div></div>
+        </div>
+        <div class="rp-conceptos-title">Detalle de Haberes</div>
+        ${conceptos.map(c=>`
+          <div class="rp-row">
+            <div class="rp-row-left">
+              <div class="rp-letra">${c.letra}</div>
+              <span class="rp-concepto">${c.nombre}</span>
+            </div>
+            <span class="rp-monto">${fmt(c.valor)}</span>
+          </div>`).join('')}
+        <div class="rp-total-row">
+          <span class="rp-total-lbl">Total Haberes</span>
+          <span class="rp-total-val">${fmt(r.total)}</span>
+        </div>
+      </div>
+      ${r.observaciones ? `<div class="rp-obs"><strong>Observaciones:</strong> ${r.observaciones}</div>` : ''}
+      <div class="rp-footer">
+        <span>FCSL II SRL — Supermercados Rufino</span>
+        <span>Firma empleado: ___________________</span>
+      </div>
+    </div>`
+}
+
+function imprimirRecibo() {
+  const contenido = $('recibo-printable')
+  if (!contenido) return
+  const printArea = $('print-area')
+  printArea.innerHTML = contenido.outerHTML
+  window.print()
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+async function init() {
+  // Escuchar cambios de auth
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_OUT') showSection('section-login')
+  })
+
+  await cargarSesion()
+
+  // Ocultar loader
+  const loader = $('app-loader')
+  loader.style.opacity = '0'
+  setTimeout(() => loader.classList.add('hidden'), 400)
+}
+
+init()
+</script>
+</body>
+</html>
