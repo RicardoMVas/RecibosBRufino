@@ -508,7 +508,7 @@
               <th>DNI</th>
               <th>Ocupación</th>
               <th>Estado</th>
-              <th>Registro</th>
+              <th>Firma</th>
               <th class="text-right">Acciones</th>
             </tr>
           </thead>
@@ -546,6 +546,7 @@
               <th class="text-right">C — Adelantos</th>
               <th class="text-right">D — Efectivo</th>
               <th class="text-right">Total</th>
+              <th class="text-right">Firma</th>
               <th class="text-right">Acciones</th>
             </tr>
           </thead>
@@ -577,6 +578,7 @@
       <span class="nav-user" id="emp-nav-user"></span>
       <button class="nav-btn" onclick="showEmpTab('tab-emp-inicio')">Inicio</button>
       <button class="nav-btn" onclick="showEmpTab('tab-emp-recibos')">Mis Recibos</button>
+      <button class="nav-btn" onclick="abrirDefinirPin()">🔑 Mi PIN</button>
       <button class="nav-btn" onclick="doLogout()">Salir</button>
     </div>
   </nav>
@@ -699,6 +701,102 @@
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="imprimirRecibo()">🖨 Imprimir / Guardar PDF</button>
       <button class="btn btn-secondary" onclick="cerrarModal('modal-ver-recibo')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: SUBIR FIRMA (admin)
+════════════════════════════════════════ -->
+<div id="modal-firma" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:440px;">
+    <div class="modal-head">
+      <h3 id="modal-firma-titulo">Subir Firma</h3>
+      <button class="modal-close" onclick="cerrarModal('modal-firma')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--verde);opacity:.7;margin-bottom:16px;">
+        Subí la firma del empleado en formato JPG o PNG.
+      </p>
+      <div id="firma-preview" style="border:2px dashed var(--beige);padding:16px;text-align:center;margin-bottom:16px;min-height:80px;display:flex;align-items:center;justify-content:center;">
+        <span style="color:var(--verde);opacity:.4;font-size:13px;">Vista previa de la firma</span>
+      </div>
+      <div class="form-group">
+        <label class="lbl">Seleccionar imagen</label>
+        <input type="file" id="firma-file" accept="image/*" onchange="previewFirma(this)" style="width:100%;font-size:13px;" />
+      </div>
+      <div id="modal-firma-error" class="alert alert-error hidden"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="guardarFirma()" id="btn-guardar-firma">Guardar Firma</button>
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-firma')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: FIRMAR RECIBO (empleado)
+════════════════════════════════════════ -->
+<div id="modal-firmar" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-head">
+      <h3>Firmar Recibo</h3>
+      <button class="modal-close" onclick="cerrarModal('modal-firmar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-firmar-recibo-preview" style="margin-bottom:20px;"></div>
+      <div style="background:var(--beige-light);border:1px solid var(--beige);padding:16px;margin-bottom:16px;">
+        <p style="font-size:13px;font-weight:600;color:var(--verde);margin-bottom:4px;">⚠️ Atención</p>
+        <p style="font-size:12px;color:var(--verde);opacity:.8;">Al firmar confirmás que los datos del recibo son correctos. Esta acción no se puede deshacer.</p>
+      </div>
+      <div class="form-group">
+        <label class="lbl">Ingresá tu PIN para firmar</label>
+        <div style="position:relative;">
+          <input type="password" id="pin-firmar" placeholder="Tu PIN personal" style="padding-right:42px;" />
+          <button type="button" onclick="togglePass('pin-firmar',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--verde);opacity:.6;font-size:16px;">👁</button>
+        </div>
+      </div>
+      <div id="modal-firmar-error" class="alert alert-error hidden"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="confirmarFirma()" id="btn-confirmar-firma">Firmar Recibo</button>
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-firmar')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: DEFINIR PIN (empleado)
+════════════════════════════════════════ -->
+<div id="modal-pin" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-head">
+      <h3>Definir PIN de Firma</h3>
+      <button class="modal-close" onclick="cerrarModal('modal-pin')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--verde);opacity:.7;margin-bottom:16px;">
+        Este PIN lo usarás cada vez que quieras firmar un recibo. Guardalo en un lugar seguro.
+      </p>
+      <div class="form-group">
+        <label class="lbl">PIN (mínimo 4 caracteres)</label>
+        <div style="position:relative;">
+          <input type="password" id="pin-nuevo" placeholder="Definir PIN" style="padding-right:42px;" />
+          <button type="button" onclick="togglePass('pin-nuevo',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--verde);opacity:.6;font-size:16px;">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="lbl">Confirmar PIN</label>
+        <div style="position:relative;">
+          <input type="password" id="pin-confirm" placeholder="Repetir PIN" style="padding-right:42px;" />
+          <button type="button" onclick="togglePass('pin-confirm',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--verde);opacity:.6;font-size:16px;">👁</button>
+        </div>
+      </div>
+      <div id="modal-pin-error" class="alert alert-error hidden"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="guardarPin()">Guardar PIN</button>
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-pin')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -930,12 +1028,16 @@ function renderEmpleados() {
     } else {
       acciones = `<button class="btn btn-success btn-sm" onclick="cambiarEstado('${e.id}','aprobado')">Rehabilitar</button>`
     }
+    const firmaCell = e.firma_img
+      ? `<img src="${e.firma_img}" style="height:32px;max-width:100px;object-fit:contain;border:1px solid var(--beige);padding:2px;" />`
+      : `<button class="btn btn-secondary btn-sm" onclick="abrirSubirFirma('${e.id}','${e.apellido} ${e.nombre}')">Subir firma</button>`
     return `
       <tr>
         <td class="td-bold">${e.apellido}, ${e.nombre}</td>
         <td>${e.dni}</td>
         <td>${e.ocupacion}</td>
         <td><span class="badge ${badge[e.estado]}">${label[e.estado]}</span></td>
+        <td>${firmaCell}</td>
         <td>${fmtFecha(e.created_at)}</td>
         <td class="td-actions">${acciones}</td>
       </tr>`
@@ -988,7 +1090,18 @@ function renderRecibosAdmin() {
   }
   $('recibos-admin-empty').classList.add('hidden')
 
-  tbody.innerHTML = lista.map(r => `
+  tbody.innerHTML = lista.map(r => {
+    const firmado = r.firmado
+    const firmaBadge = firmado
+      ? `<span class="badge badge-approved">✔ Firmado</span>`
+      : `<span class="badge badge-pending">Pendiente</span>`
+    const acciones = firmado
+      ? `<button class="btn btn-primary btn-sm" onclick="imprimirReciboAdmin('${r.id}')">🖨 PDF</button>`
+      : `
+        <button class="btn btn-primary btn-sm"   onclick="imprimirReciboAdmin('${r.id}')">🖨 PDF</button>
+        <button class="btn btn-secondary btn-sm" onclick="abrirFormRecibo('${r.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm"    onclick="eliminarRecibo('${r.id}')">Eliminar</button>`
+    return `
     <tr>
       <td class="td-bold">${r.profiles?.apellido||''}, ${r.profiles?.nombre||''}</td>
       <td>${MESES[r.periodo_mes-1]} ${r.periodo_anio}</td>
@@ -997,12 +1110,10 @@ function renderRecibosAdmin() {
       <td class="text-right">${fmt(r.recibo_c)}</td>
       <td class="text-right">${fmt(r.recibo_d)}</td>
       <td class="text-right td-bold">${fmt(r.total)}</td>
-      <td class="td-actions">
-        <button class="btn btn-primary btn-sm"   onclick="imprimirReciboAdmin('${r.id}')">🖨 PDF</button>
-        <button class="btn btn-secondary btn-sm" onclick="abrirFormRecibo('${r.id}')">Editar</button>
-        <button class="btn btn-danger btn-sm"    onclick="eliminarRecibo('${r.id}')">Eliminar</button>
-      </td>
-    </tr>`).join('')
+      <td class="text-right">${firmaBadge}</td>
+      <td class="td-actions">${acciones}</td>
+    </tr>`
+  }).join('')
 }
 
 // ── FORM RECIBO ─────────────────────────────────────────────
@@ -1080,6 +1191,10 @@ async function guardarRecibo() {
 
   if (!emp_id)      { showAlert('modal-recibo-error', 'Seleccioná un empleado.'); return }
   if (isNaN(total)) { showAlert('modal-recibo-error', 'Ingresá el total.'); return }
+  if (editandoReciboId) {
+    const recibo = allRecibos.find(r => r.id === editandoReciboId)
+    if (recibo?.firmado) { showAlert('modal-recibo-error', 'Este recibo ya fue firmado y no puede modificarse.'); return }
+  }
 
   const btn = $('btn-guardar-recibo')
   btn.disabled = true; btn.textContent = 'Guardando...'
@@ -1109,6 +1224,8 @@ async function guardarRecibo() {
 }
 
 async function eliminarRecibo(id) {
+  const recibo = allRecibos.find(r => r.id === id)
+  if (recibo?.firmado) { alert('Este recibo ya fue firmado y no puede eliminarse.'); return }
   if (!confirm('¿Eliminar este recibo? Esta acción no se puede deshacer.')) return
   await sb.from('recibos').delete().eq('id', id)
   await cargarRecibosAdmin()
@@ -1185,7 +1302,10 @@ function renderRecibosEmpleado() {
           <div class="periodo">${MESES[r.periodo_mes-1]} ${r.periodo_anio}</div>
           <div class="tipo">Recibo B — Haberes</div>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="verRecibo('${r.id}')">Ver / Imprimir</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${r.firmado ? '<span class="badge badge-approved">✔ Firmado</span>' : ''}
+          <button class="btn btn-secondary btn-sm" onclick="verRecibo('${r.id}')">Ver / Firmar</button>
+        </div>
       </div>
       <div class="recibo-card-body">
         <div class="recibo-item"><div class="ri-lbl">A — Sueldo</div><div class="ri-val">${fmt(r.recibo_a)}</div></div>
@@ -1251,9 +1371,15 @@ function buildReciboPrint(r, p) {
         </div>
       </div>
       ${r.observaciones ? `<div class="rp-obs"><strong>Observaciones:</strong> ${r.observaciones}</div>` : ''}
-      <div class="rp-footer">
+      <div class="rp-footer" style="align-items:center;">
         <span>FCSL II SRL — Supermercados Rufino</span>
-        <span>Firma empleado: ___________________</span>
+        <div style="text-align:right;">
+          ${r.firmado && r.firma_img
+            ? `<img src="${r.firma_img}" style="height:48px;max-width:160px;object-fit:contain;display:block;margin-left:auto;" />`
+            : `<div style="border-bottom:1px solid var(--verde);width:180px;margin-left:auto;"></div>`}
+          <div style="font-size:9px;margin-top:3px;">Firma del empleado</div>
+          ${r.firmado && r.firmado_at ? `<div style="font-size:9px;opacity:.6;">Firmado: ${new Date(r.firmado_at).toLocaleDateString('es-AR')}</div>` : ''}
+        </div>
       </div>
     </div>`
 }
@@ -1340,6 +1466,146 @@ function imprimirReciboAdmin(id) {
   win.document.close()
   win.focus()
   setTimeout(() => { win.print(); }, 800)
+}
+
+// ── FIRMA: ADMIN SUBE FIRMA ─────────────────────────────────
+let firmaEmpleadoId = null
+let firmaBase64 = null
+
+function abrirSubirFirma(empId, empNombre) {
+  firmaEmpleadoId = empId
+  firmaBase64 = null
+  $('modal-firma-titulo').textContent = `Firma de ${empNombre}`
+  $('firma-preview').innerHTML = '<span style="color:var(--verde);opacity:.4;font-size:13px;">Vista previa de la firma</span>'
+  $('firma-file').value = ''
+  hideAlert('modal-firma-error')
+  $('modal-firma').classList.remove('hidden')
+}
+
+function previewFirma(input) {
+  const file = input.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = e => {
+    firmaBase64 = e.target.result
+    $('firma-preview').innerHTML = `<img src="${firmaBase64}" style="max-height:80px;max-width:100%;object-fit:contain;" />`
+  }
+  reader.readAsDataURL(file)
+}
+
+async function guardarFirma() {
+  if (!firmaBase64) { showAlert('modal-firma-error', 'Seleccioná una imagen.'); return }
+  const btn = $('btn-guardar-firma')
+  btn.disabled = true; btn.textContent = 'Guardando...'
+  const { error } = await sb.from('profiles').update({ firma_img: firmaBase64 }).eq('id', firmaEmpleadoId)
+  btn.disabled = false; btn.textContent = 'Guardar Firma'
+  if (error) { showAlert('modal-firma-error', 'Error al guardar la firma.'); return }
+  cerrarModal('modal-firma')
+  await cargarEmpleados()
+}
+
+// ── FIRMA: EMPLEADO DEFINE PIN ───────────────────────────────
+function abrirDefinirPin() {
+  $('pin-nuevo').value = ''
+  $('pin-confirm').value = ''
+  hideAlert('modal-pin-error')
+  $('modal-pin').classList.remove('hidden')
+}
+
+async function guardarPin() {
+  const pin     = $('pin-nuevo').value
+  const confirm = $('pin-confirm').value
+  if (pin.length < 4)   { showAlert('modal-pin-error', 'El PIN debe tener al menos 4 caracteres.'); return }
+  if (pin !== confirm)  { showAlert('modal-pin-error', 'Los PIN no coinciden.'); return }
+  // Simple hash: btoa para no guardar en texto plano
+  const pinHash = btoa(pin)
+  const { error } = await sb.from('profiles').update({ pin_hash: pinHash }).eq('id', currentUser.id)
+  if (error) { showAlert('modal-pin-error', 'Error al guardar el PIN.'); return }
+  currentProfile.pin_hash = pinHash
+  cerrarModal('modal-pin')
+  alert('✅ PIN guardado correctamente.')
+}
+
+// ── FIRMA: EMPLEADO FIRMA RECIBO ─────────────────────────────
+let reciboAFirmar = null
+
+function verRecibo(id) {
+  const r = allRecibos.find(x => x.id === id)
+  if (!r) return
+  reciboParaImprimir = r
+  $('modal-ver-titulo').textContent = `Recibo B — ${MESES[r.periodo_mes-1]} ${r.periodo_anio}`
+  $('modal-ver-body').innerHTML = buildReciboPrint(r, currentProfile)
+
+  // Mostrar botón firmar solo si no está firmado y tiene PIN definido
+  const actionsEl = document.querySelector('#modal-ver-recibo .modal-actions')
+  if (!r.firmado) {
+    if (!currentProfile.pin_hash) {
+      actionsEl.innerHTML = `
+        <button class="btn btn-primary" onclick="imprimirRecibo()">🖨 Imprimir / Guardar PDF</button>
+        <button class="btn btn-secondary" onclick="abrirDefinirPin()">🔑 Definir PIN para firmar</button>
+        <button class="btn btn-secondary" onclick="cerrarModal('modal-ver-recibo')">Cerrar</button>`
+    } else {
+      actionsEl.innerHTML = `
+        <button class="btn btn-primary" onclick="imprimirRecibo()">🖨 Imprimir / Guardar PDF</button>
+        <button class="btn btn-success" onclick="abrirFirmarRecibo('${r.id}')">✍ Firmar Recibo</button>
+        <button class="btn btn-secondary" onclick="cerrarModal('modal-ver-recibo')">Cerrar</button>`
+    }
+  } else {
+    actionsEl.innerHTML = `
+      <button class="btn btn-primary" onclick="imprimirRecibo()">🖨 Imprimir / Guardar PDF</button>
+      <button class="btn btn-secondary" onclick="cerrarModal('modal-ver-recibo')">Cerrar</button>`
+  }
+
+  $('modal-ver-recibo').classList.remove('hidden')
+}
+
+function abrirFirmarRecibo(reciboId) {
+  reciboAFirmar = reciboId
+  const r = allRecibos.find(x => x.id === reciboId)
+  $('pin-firmar').value = ''
+  hideAlert('modal-firmar-error')
+
+  // Mini preview del recibo
+  const preview = $('modal-firmar-recibo-preview')
+  preview.innerHTML = `
+    <div style="background:var(--beige-mid);padding:12px 16px;border:1px solid var(--beige);">
+      <div style="font-weight:700;font-size:14px;">${r.profiles?.apellido || currentProfile.apellido}, ${r.profiles?.nombre || currentProfile.nombre}</div>
+      <div style="font-size:12px;opacity:.7;">${MESES[r.periodo_mes-1]} ${r.periodo_anio}</div>
+      <div style="font-size:18px;font-weight:900;color:var(--verde);margin-top:4px;">${fmt(r.total)}</div>
+    </div>`
+
+  $('modal-firmar').classList.remove('hidden')
+}
+
+async function confirmarFirma() {
+  const pin = $('pin-firmar').value
+  if (!pin) { showAlert('modal-firmar-error', 'Ingresá tu PIN.'); return }
+
+  // Verificar PIN
+  const pinHash = btoa(pin)
+  if (pinHash !== currentProfile.pin_hash) {
+    showAlert('modal-firmar-error', 'PIN incorrecto. Intentá de nuevo.')
+    return
+  }
+
+  const btn = $('btn-confirmar-firma')
+  btn.disabled = true; btn.textContent = 'Firmando...'
+
+  // Guardar firma en el recibo
+  const { error } = await sb.from('recibos').update({
+    firmado: true,
+    firmado_at: new Date().toISOString(),
+    firma_img: currentProfile.firma_img || null
+  }).eq('id', reciboAFirmar)
+
+  btn.disabled = false; btn.textContent = 'Firmar Recibo'
+
+  if (error) { showAlert('modal-firmar-error', 'Error al firmar el recibo.'); return }
+
+  cerrarModal('modal-firmar')
+  cerrarModal('modal-ver-recibo')
+  await cargarRecibosEmpleado()
+  alert('✅ Recibo firmado correctamente.')
 }
 
 // ── INIT ─────────────────────────────────────────────────────
